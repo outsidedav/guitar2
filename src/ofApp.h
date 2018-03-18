@@ -23,6 +23,7 @@ class ofApp : public ofBaseApp{
 		void audioIn(ofSoundBuffer &inBuff);
 		void audioOut(ofSoundBuffer &outBuff);
 		std::vector<float> micSamples;
-    
+		ofSoundBuffer mModulationBuffer;//we process our
         mutex audioMutex;
+		float mPhase;
 };

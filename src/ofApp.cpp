@@ -10,7 +10,20 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-unique_lock<mutex> lock(audioMutex);
+	ofScopedLock lockIt(audioMutex);
+
+	//loop through our modulation buffer
+	// and ring modulate it against a sin wave.
+	//this is known as ring modulation.
+	//BEWARE:  you must make sure you multiply
+	//yout buffer sample by a float like 0.5 so you don't get a feedback loop
+	for(int i=0; i < mModulationBuffer.size(); i+=2){
+		mModulationBuffer[i] *= (sin(mPhase * TWO_PI) *0.5f);
+		mModulationBuffer[i+1] *= (sin(mPhase * TWO_PI) *0.5f);
+		// we offset our phase by the frequency / sampling rate
+		mPhase += (400.0f / 44100.0f);
+	}
+	
 }
 
 //--------------------------------------------------------------
@@ -25,8 +38,9 @@ void ofApp::draw(){
     ofBeginShape();
 	float x = 0;
     float y = 0;
-    for(auto &sample: micSamples){
-        ofVertex(x*4, sample*100.0f);
+	for(int i=0; i < mModulationBuffer.size();i+=2){
+		float sample = mModulationBuffer[i];
+		ofVertex(x*4, sample*100.0f);
         x++;
     }
     ofEndShape();
@@ -34,28 +48,18 @@ void ofApp::draw(){
 }
 
 void ofApp::audioIn(ofSoundBuffer &inBuff){
-	for(int i=0; i < inBuff.size(); i++){
-		//assign our buffer samples to our
-		//floating point vector.
-
-		micSamples[i]		= inBuff[i]*0.5;
-	}
+	ofScopedLock lockIt(audioMutex);
+	//copy our inbuffer over to our modulation buffer
+	
+	mModulationBuffer = inBuff;
+	
 }
 
 void ofApp::audioOut(ofSoundBuffer &outBuff){
-	
-    
-    unique_lock<mutex> lock(audioMutex);
-    
-    for(size_t i = 0; i < outBuff.size(); i++) {
-    
-        
-    outBuff.getSample(i, 0) = micSamples[i];
-    outBuff.getSample(i, 1) = micSamples[i+1];
-        
-    }
-	
-    
+	ofScopedLock lockIt(audioMutex);
+    //copy our modulation buffer to our output
+	//so we can hear it.
+	mModulationBuffer.copyTo(outBuff);
 }
 
 //--------------------------------------------------------------
