@@ -11,39 +11,30 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update(){
 	ofScopedLock lockIt(audioMutex);
-
-	//loop through our modulation buffer
-	// and ring modulate it against a sin wave.
-	//this is known as ring modulation.
-	//BEWARE:  you must make sure you multiply
-	//yout buffer sample by a float like 0.5 so you don't get a feedback loop
-	for(int i=0; i < mModulationBuffer.size(); i+=2){
-		mModulationBuffer[i] *= (sin(mPhase * TWO_PI) *0.5f);
-		mModulationBuffer[i+1] *= (sin(mPhase * TWO_PI) *0.5f);
-		// we offset our phase by the frequency / sampling rate
-		mPhase += (400.0f / 44100.0f);
-	}
+    
+    //draw polyline
+    waveform.clear();
+    for(size_t i = 0; i < mModulationBuffer.getNumFrames(); i++) {
+        float sample = mModulationBuffer.getSample(i, 0);
+        float x = ofMap(i, 0, mModulationBuffer.getNumFrames(), 0, ofGetWidth());
+        float y = ofMap(sample, -1, 1, 0, ofGetHeight());
+        waveform.addVertex(x, y);
+    }
+    
+    rms = mModulationBuffer.getRMSAmplitude();
+    
 	
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-	//Try as ofPolyline
+
+  //Draw waveform
+    ofBackground(0);
+    ofSetColor(255);
+    ofSetLineWidth(1 + (rms * 30.));
+    waveform.draw();
     
-    ofTranslate(0.0, 170);
-    ofNoFill();
-    ofSetLineWidth(3);
-    ofSetColor(92, 107, 251);//blue
-	
-    ofBeginShape();
-	float x = 0;
-    float y = 0;
-	for(int i=0; i < mModulationBuffer.size();i+=2){
-		float sample = mModulationBuffer[i];
-		ofVertex(x*4, sample*100.0f);
-        x++;
-    }
-    ofEndShape();
     
 }
 
@@ -51,6 +42,8 @@ void ofApp::audioIn(ofSoundBuffer &inBuff){
 	ofScopedLock lockIt(audioMutex);
 	//copy our inbuffer over to our modulation buffer
 	
+    
+    
 	mModulationBuffer = inBuff;
 	
 }
@@ -59,12 +52,64 @@ void ofApp::audioOut(ofSoundBuffer &outBuff){
 	ofScopedLock lockIt(audioMutex);
     //copy our modulation buffer to our output
 	//so we can hear it.
-	mModulationBuffer.copyTo(outBuff);
+
+    
+
+    if(currWaveForm==3){
+        mModulationBuffer.copyTo(outBuff);
+    }
+    
+    else{
+    for(int i=0; i < mModulationBuffer.size(); i+=2){
+        mPhase += (400.0f / 44100.0f);
+        float sample = distortion(mPhase, currWaveForm);
+        sample *= mModulationBuffer[i];
+        outBuff[i]= sample;
+        outBuff[i+1]= sample;
+        }
+   
+    }
+    
+	
 }
+
+
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
+    switch (key) {
+        case '1':
+            currWaveForm = 1;
+            break;
+        case '2':
+            currWaveForm = 2;
+            
+            break;
+        case '3':
+            currWaveForm = 3;
+            
+            break;
+     
+        default:
+            break;
+    }
+}
 
+//--------------------------------------------------------------
+float ofApp::distortion(float phase, int waveType){
+    switch (waveType) {
+        case 1://tri
+            return abs(sin(phase*TWO_PI));
+            ofLogNotice("tri");
+            break;
+        case 2://square
+            return sin(phase*TWO_PI)>0?1:-1;
+            ofLogNotice("square");
+        case 3://sine
+             return fmod(phase,TWO_PI);
+        default:
+            break;
+    }
 }
 
 //--------------------------------------------------------------

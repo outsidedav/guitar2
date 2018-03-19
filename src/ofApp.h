@@ -22,8 +22,12 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);
 		void audioIn(ofSoundBuffer &inBuff);
 		void audioOut(ofSoundBuffer &outBuff);
+        float distortion(float phase, int waveType);
 		std::vector<float> micSamples;
-		ofSoundBuffer mModulationBuffer;//we process our
+		ofSoundBuffer mModulationBuffer;
         mutex audioMutex;
 		float mPhase;
+        float rms;
+        ofPolyline waveform;
+        int currWaveForm = 1;
 };
