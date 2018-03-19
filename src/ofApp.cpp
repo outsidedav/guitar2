@@ -61,6 +61,7 @@ void ofApp::audioOut(ofSoundBuffer &outBuff){
     
     else{
     for(int i=0; i < mModulationBuffer.size(); i+=2){
+       
         mPhase += (400.0f / 44100.0f);
         float sample = distortion(mPhase, currWaveForm);
         sample *= mModulationBuffer[i];
